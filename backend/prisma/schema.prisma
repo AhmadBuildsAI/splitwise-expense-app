@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String         @id @default(uuid())
+  username          String         @unique
+  email             String         @unique
+  passwordHash      String
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  activities        Activity[]
+  expenseSplits     ExpenseSplit[]
+  expensesCreated   Expense[]      @relation("ExpenseCreator")
+  expensesPaid      Expense[]      @relation("ExpensePayer")
+  groupMemberships  GroupMember[]
+  groupsCreated     Group[]        @relation("GroupCreator")
+  settlementsPaid   Settlement[]   @relation("SettlementPayer")
+  settlementsGotten Settlement[]   @relation("SettlementPayee")
+
+  @@map("users")
+}
+
+model Group {
+  id          String        @id @default(uuid())
+  name        String
+  createdBy   String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  activities  Activity[]
+  expenses    Expense[]
+  members     GroupMember[]
+  creator     User          @relation("GroupCreator", fields: [createdBy], references: [id])
+  settlements Settlement[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String   @id @default(uuid())
+  groupId  String
+  userId   String
+  joinedAt DateTime @default(now())
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+model Expense {
+  id           String         @id @default(uuid())
+  groupId      String
+  description  String
+  totalAmount  Int
+  paidByUserId String
+  splitType    SplitType
+  date         DateTime
+  createdBy    String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
+  splits       ExpenseSplit[]
+  creator      User           @relation("ExpenseCreator", fields: [createdBy], references: [id])
+  group        Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer        User           @relation("ExpensePayer", fields: [paidByUserId], references: [id])
+
+  @@index([groupId])
+  @@map("expenses")
+}
+
+model ExpenseSplit {
+  id         String  @id @default(uuid())
+  expenseId  String
+  userId     String
+  amountOwed Int
+  expense    Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user       User    @relation(fields: [userId], references: [id])
+
+  @@unique([expenseId, userId])
+  @@map("expense_splits")
+}
+
+model Settlement {
+  id           String   @id @default(uuid())
+  groupId      String
+  paidByUserId String
+  paidToUserId String
+  amount       Int
+  date         DateTime
+  createdAt    DateTime @default(now())
+  group        Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer        User     @relation("SettlementPayer", fields: [paidByUserId], references: [id])
+  payee        User     @relation("SettlementPayee", fields: [paidToUserId], references: [id])
+
+  @@index([groupId])
+  @@map("settlements")
+}
+
+model Activity {
+  id          String       @id @default(uuid())
+  groupId     String
+  actorUserId String
+  eventType   ActivityType
+  entityId    String
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+  actor       User         @relation(fields: [actorUserId], references: [id])
+  group       Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+  @@map("activities")
+}
+
+enum SplitType {
+  EQUAL
+  EXACT
+}
+
+enum ActivityType {
+  EXPENSE_CREATED
+  EXPENSE_EDITED
+  EXPENSE_DELETED
+  SETTLEMENT_RECORDED
+  MEMBER_JOINED
+  MEMBER_LEFT
+  GROUP_CREATED
+}
