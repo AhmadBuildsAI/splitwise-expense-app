@@ -3,7 +3,10 @@ import { env } from "./config/env";
 
 const app = createApp();
 
-app.listen(env.port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Server listening on port ${env.port} [${env.nodeEnv}]`);
-});
+if (env.nodeEnv !== "production") {
+  app.listen(env.port, () => {
+    console.log(`Server listening on port ${env.port} [${env.nodeEnv}]`);
+  });
+}
+
+export default app;
