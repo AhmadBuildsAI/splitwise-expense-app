@@ -7,7 +7,7 @@ import { env } from "./config/env";
 import routes from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
-export default function createApp() {
+export function createApp() {
   const app = express();
 
   app.use(helmet());
@@ -31,3 +31,7 @@ export default function createApp() {
 
   return app;
 }
+
+const app = createApp();
+
+export default app;
